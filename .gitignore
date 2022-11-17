@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+dbs
+tests
+legacy
+results
+pt2matsim
+figures/records
+*.pyc
+.ipynb_checkpoints
