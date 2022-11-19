@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import numpy as np
 from tqdm import tqdm
 import pandas as pd
 import matsim
@@ -102,14 +101,6 @@ if __name__ == '__main__':
     df_trips.to_csv(ROOT_dir + f"/dbs/output_summary/{scenario}/{run_id}trips.csv", index=False)
     print("Share of negative activity time trips: %.2f%%" % ((len(df_trips.loc[df_trips['act_time'] <= 0, :]) /
                                                               len(df_trips)) * 100))
-    # Create temporal profiles
-    print("Creating temporal profiles...")
-    df_trips_tempo = workers.temporal_profiler(df_trips, type='activity')
-    df_trips_driving = df_trips.loc[(df_trips['mode'] == 'car') & (df_trips.act_id != 0), :]
-    print("Share of car trips: %.2f%%" % ((len(df_trips_driving) / len(df_trips)) * 100))
-    df_trips_driving_tempo = workers.temporal_profiler(df_trips_driving, type='driving')
-    df_trips_tempo.to_csv(ROOT_dir + f"/dbs/output_summary/{scenario}/{run_id}activity_tempo.csv", index=False)
-    df_trips_driving_tempo.to_csv(ROOT_dir + f"/dbs/output_summary/{scenario}/{run_id}driving_tempo.csv", index=False)
 
     # Input-output stats - simple
     df_stats_simple = pd.pivot_table(df_trips, index=['act_purpose'], columns=['src', 'mode'],

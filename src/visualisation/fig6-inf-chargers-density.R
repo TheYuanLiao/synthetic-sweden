@@ -23,6 +23,7 @@ zones <- read_sf('dbs/DeSO/DeSO_2018_v2.shp')
 zones <- zones[zones$deso %in% unique(charging$deso),]
 zones$Area <- st_area(zones)
 
+# Charging density by purpose
 tst <- charging %>%
   filter(power_fast==50) %>%
   group_by(deso, Charging_type, Purpose) %>%
@@ -35,7 +36,22 @@ tst <- right_join(x = zones[, c('deso', 'Area')]%>% st_set_geometry(NULL),
                                              y = tst,
                                    by = "deso", all.y = TRUE)
 tst$Charge_point_density <- tst$total / (as.numeric(tst$Area) / 10^6)# #/km^2
-tst.stats <- tst %>%
+
+# Charging density overall
+tst.all <- charging %>%
+  filter(power_fast==50) %>%
+  group_by(deso, Charging_type) %>%
+  summarise(total=sum(number)) %>%
+  filter(Charging_type %in% c('1 (0.2)', '2 (0.2)', '3 (0.9)'))
+tst.all$Charging_type <- plyr::mapvalues(tst.all$Charging_type,
+                                        from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
+                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+tst.all <- right_join(x = zones[, c('deso', 'Area')]%>% st_set_geometry(NULL),
+                                             y = tst.all,
+                                   by = "deso", all.y = TRUE)
+tst.all$Charge_point_density <- tst.all$total / (as.numeric(tst.all$Area) / 10^6)# #/km^2
+
+tst.stats <- tst.all %>%
   group_by(Charging_type) %>%
   summarise(q.05 = quantile(Charge_point_density, 0.05, na.rm=T),
             q.95 = quantile(Charge_point_density, 0.95, na.rm=T),

@@ -58,12 +58,21 @@ class EVSimulation:
         self.events_sim = None
 
     def load_network(self):
+        """
+        Load processed road network.
+        """
         self.network = gpd.read_file(ROOT_dir + f'/dbs/output_summary/{self.scenario}/volumes_slope.shp')
         self.network.loc[self.network['slope'] < -0.06, 'slope'] = -0.06
         self.network.loc[self.network['slope'] > 0.06, 'slope'] = 0.06
         self.network.loc[:, 'slope'] *= 100
 
     def load_events(self, df_event=None, valid_agents_filter=True):
+        """
+        Load MATSim simulation output (events) and process them.
+        :param df_event: a dataframe of events batch prepared
+        :param valid_agents_filter: a boolean, whether filter out invalid agents
+        :return: a list of applied agents
+        """
         # Further filter out problematic agents who do not move for different activities
         invalid_agents_no_charging = self.potential_charging.loc[(self.potential_charging.trav_time_min < 1) &
                                                                  (self.potential_charging.act_id != 0), 'PId'].astype(
@@ -87,13 +96,18 @@ class EVSimulation:
         return agents_car
 
     def sim_paras_preparation(self, agents_list=None, home_charger=False):
+        """
+        Prepare agents' car fleet and initial soc.
+        :param agents_list: a list of target agents
+        :param home_charger: a boolean, whether consider home charger access
+        """
         # Get car information from valid agents
         self.agents = pd.DataFrame()
         self.agents.loc[:, 'person'] = agents_list
         self.agents.loc[:, 'agent_id'] = range(0, self.agents_num)
         self.agents = self.agents.merge(self.valid_agents.loc[:, ['PId', 'car']],
                                         left_on='person', right_on='PId', how='left')
-        # Initial SOC
+        # Initialize SOC
         if home_charger:
             maxValue = 0.9
             df_charger = pd.read_csv(ROOT_dir + f'/dbs/output_summary/home_charger_access.csv')
@@ -115,7 +129,15 @@ class EVSimulation:
             self.agents.loc[:, 'soc'] = soc_list
 
     def events_processing(self):
+        """
+        Process events to add energy labels, agent information, and road information.
+        """
         def traj_processing(data):
+            """
+            Process an individual trajectory to add columns for further simulation.
+            :param data: a dataframe of an individual's trajectory
+            :return: processed individual trajectory
+            """
             def find_speed2calculation(x):
                 X = x.values
                 return X[0] == X[1]
@@ -145,6 +167,11 @@ class EVSimulation:
         print(f'Events with {len(self.events)} rows.')
 
     def ev_sim_discharging(self, home_charger=False, test=False):
+        """
+        Simulate discharged energy by road segment without charging.
+        :param home_charger: a boolean, whether consider home_charger
+        :param test: a boolean, whether focus on a small sample size, 200
+        """
         # Calculate speed and processing
         if test:
             partial_agents = self.events.loc[:, 'person'].unique()
@@ -188,6 +215,14 @@ class EVSimulation:
         self.events_sim = events_final
 
     def traj_energy(self, data=None, soc_threshold=None, min_parking_time=5, fast=150, intermediate=22):
+        """
+        A dataframe of an agent's trajectory containing SOC time series etc by three charging strategies.
+        :param data: a dataframe of individual processed trajectory with discharged energy information
+        :param soc_threshold: a tuple of soc thresholds for the three charging strategies
+        :param min_parking_time: int, minimum parking time for considering charging
+        :param fast: int, fast charging power rating
+        :param intermediate: int, intermediate charging power rating
+        """
         # soc_threshold is (threshold1, threshold2, threshold3)
         person = data.loc[:, 'person'].values[0]  # String
         battery = data.loc[:, 'car'].apply(lambda x: car_dict[x]['battery'])
@@ -300,6 +335,13 @@ class EVCharging:
         self.intermediate = intermediate
 
     def charging_module(self, charging_event=None, soc_field=None, energy_field=None):
+        """
+        Update a charging event with end energy, selected power, and soc.
+        :param charging_event: dict, the keys include 'person', 'car', 'time', 'deltaT', 'purpose' etc
+        :param soc_field: str, the key whose value to be updated: end soc after charging
+        :param energy_field: str, the key whose value to be updated: energy charged
+        :return: dict, updated charging event
+        """
         # Initial soc and total parking time
         soc_start = charging_event[soc_field]
         parking_time = charging_event['deltaT']
@@ -328,6 +370,9 @@ class EVSimulationMulti(EVSimulation):
         self.soc_tracker = None
 
     def initialise_soc_tracker(self):
+        """
+        Initialize a soc tracker over multiple days of simulation.
+        """
         self.soc_tracker = []
         df_soc_list = []
         for cb in [1, 2, 3]:
@@ -348,7 +393,13 @@ class EVSimulationMulti(EVSimulation):
                 lambda x: soc_init[x][cb]['soc'])
 
     def update_soc_init(self, events_final=None, day=2, paraset=1):
-        # prepare soc for next simulation day
+        """
+
+        :param events_final: dataframe, simulated events from yesterday
+        :param day: int, number of simulation day
+        :param paraset: int, paraset index
+        """
+        # Read the individual statistics from the baseline simulation, and prepare soc for next simulation day
         if events_final is None:
             df_soc = pd.read_sql(f'''SELECT person, charging_type, soc_end, finish_day 
                                      FROM sim_statistics.scenario_vg_car_individual
@@ -362,7 +413,7 @@ class EVSimulationMulti(EVSimulation):
         df_soc.loc[:, 'resi_charger'] = df_soc.apply(lambda row: 1 if ((row['finish_day'] == 0) | (row['soc'] < 0.2))
                                                                       & (row['home_charger'] == 0) else 0,
                                                      axis=1)
-        # Having access to home charger or residential charger => soc_initial is 1, otherwise, from yesterday
+        # Having access to home charger or non-home residential charger => soc_initial is 1, otherwise, from yesterday
         df_soc.loc[:, 'soc'] = df_soc.apply(
             lambda row: 1 if (row['resi_charger'] == 1) | (row['home_charger'] == 1) else row['soc'], axis=1)
         df_soc.loc[:, 'day'] = day
@@ -376,6 +427,9 @@ class EVSimulationMulti(EVSimulation):
                 lambda x: soc_init[x][cb]['soc'])
 
     def traj_energy(self, data=None, soc_threshold=None, min_parking_time=5, fast=150, intermediate=22):
+        """
+        This overrides the method by keeping both baseline soc and newly simulated soc.
+        """
         # soc_threshold is (threshold1, threshold2, threshold3)
         person = data.loc[:, 'person'].values[0]  # String
         # print(person)
@@ -476,6 +530,11 @@ class EVSimulationMulti(EVSimulation):
 
 
 def ev_sim_soc_end(data):
+    """
+    Summarize soc in the end and whether finish the day by charging strategy.
+    :param data: dataframe, an agent's simulated trajectories
+    :return: dataframe, statistics of the simulated trajectories
+    """
     df_example = data.copy()
     # Preprocessing the simulation trajectories
     df_example = df_example.sort_values(by=['seq']).reset_index(drop=True)
@@ -492,6 +551,14 @@ def ev_sim_soc_end(data):
 
 
 def ev_sim_stats(data, paraset=None, df_para=None):
+    """
+    Summarize an agent's simulated trajectory for the baseline simulation day.
+    :param data: dataframe, an agent's simulated trajectory
+    :param paraset: int, parameter set index
+    :param df_para: dataframe, containing parameters information by set index
+    :return: dataframe, statistics of an agent's BEV simulation results:
+            charged energy from fast and intermediate charging points etc.
+    """
     power_inter = df_para.loc[df_para['paraset'] == paraset, 'power_intermediate'].values[0]
     power_fast = df_para.loc[df_para['paraset'] == paraset, 'power_fast'].values[0]
     df_example = data.copy()
@@ -579,7 +646,11 @@ def ev_sim_stats(data, paraset=None, df_para=None):
     df_stats.loc[:, 'paraset'] = paraset
     return df_stats
 
+
 def ev_sim_multi_stats(data, paraset=None, df_para=None):
+    """
+    Summarize an agent's simulated trajectory for the final simulation day.
+    """
     power_inter = df_para.loc[df_para['paraset'] == paraset, 'power_intermediate'].values[0]
     power_fast = df_para.loc[df_para['paraset'] == paraset, 'power_fast'].values[0]
     df_example = data.copy()

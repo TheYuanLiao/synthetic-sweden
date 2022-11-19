@@ -62,7 +62,7 @@ class EVSimStatsAggregation:
                                                   (self.df_indi_raw['paraset'].isin([2, 3]))), :]
         self.df_indi_raw.loc[:, 'residential_charger'] = self.df_indi_raw.apply(
             lambda row: 1 if (row['soc_init'] == 1) & (row['home_charger'] == 0) else 0, axis=1)
-        self.df_indi_raw.to_csv(f'results/sensitivity/{self.scenario}_indi_raw_5days.csv', index=False)
+        self.df_indi_raw.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_indi_raw_5days.csv', index=False)
 
     def save_indi_charging(self):
         df = pd.read_sql(f'''SELECT * FROM sim_statistics.{self.scenario}_individual_5days;''', con=engine)
@@ -93,7 +93,7 @@ class EVSimStatsAggregation:
                 return 0
 
         self.df_indi.loc[:, 'charging_energy_overnight'] = self.df_indi.apply(lambda row: overnight_energy(row), axis=1)
-        self.df_indi.to_csv(f'results/sensitivity/{self.scenario}_stats_indi_5days.csv', index=False)
+        self.df_indi.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_stats_indi_5days.csv', index=False)
 
         # Further aggregation
         total = df.person.nunique()
@@ -121,7 +121,7 @@ class EVSimStatsAggregation:
 
         df_agg = df.groupby(['paraset', 'charging_type', 'home_charger']).apply(aggregation).reset_index()
         df_agg = df_agg.merge(self.df_para, on=['paraset'])
-        df_agg.to_csv(f'results/sensitivity/{self.scenario}_stats_indi_agg_5days.csv', index=False)
+        df_agg.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_stats_indi_agg_5days.csv', index=False)
 
     def save_charger(self):
         df = pd.read_sql(f'''SELECT * FROM sim_statistics.{self.scenario}_charger_5days;''', con=engine).rename(
@@ -137,7 +137,7 @@ class EVSimStatsAggregation:
         df = df.loc[:, ['deso', 'Charging_type', 'Purpose', 'power_fast', 'charger', 'number']]
         df = df.drop_duplicates(subset=['Charging_type', 'Purpose', 'charger', 'power_fast', 'deso'])
         df = df.groupby(['deso', 'Charging_type', 'Purpose', 'power_fast', 'charger'])['number'].sum().reset_index()
-        df.to_csv(f'results/sensitivity/{self.scenario}_stats_charger_5days.csv', index=False)
+        df.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_stats_charger_5days.csv', index=False)
 
     def save_dynamics(self):
         df = pd.read_sql(f'''SELECT * FROM sim_statistics.{self.scenario}_charging_dynamics_5days;''', con=engine)
@@ -153,17 +153,17 @@ class EVSimStatsAggregation:
         df = df.loc[:, ['minute', 'Charging_type', 'Purpose', 'power_fast', 'charger', 'cars']]
         df = df.groupby(['minute', 'Charging_type', 'Purpose', 'power_fast', 'charger'])['cars'].sum().reset_index()
         df.loc[:, 'power'] = df.loc[:, 'charger'] * df.loc[:, 'cars']
-        df.to_csv(f'results/sensitivity/{self.scenario}_stats_power_5days.csv', index=False)
+        df.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_stats_power_5days.csv', index=False)
 
     def save_inf_comp(self):
         self.df_inf_gt = self.df_inf_gt.loc[:, ['id', 'lat', 'lng', 'pw', 'n']]
         self.df_inf_gt.loc[:, 'fast'] = self.df_inf_gt.apply(lambda row: row['n'] if row['pw'] > 22 else 0, axis=1)
         gdf = dw.df2gdf_point(self.df_inf_gt, 'lng', 'lat', crs=4326, drop=True).to_crs(3006)
-        df_sim = pd.read_csv(f"results/sensitivity/{self.scenario}_stats_charger_5days.csv")
+        df_sim = pd.read_csv(ROOT_dir + f"/results/sensitivity/{self.scenario}_stats_charger_5days.csv")
 
         # Add all intermediate and fast power together to compare with today's infrastructure
         df_sim = df_sim.groupby(['deso', 'Charging_type', 'power_fast'])['number'].sum().reset_index()
-        zones = gpd.read_file(f'dbs/DeSO/DeSO_2018_v2.shp')
+        zones = gpd.read_file(ROOT_dir + f'/dbs/DeSO/DeSO_2018_v2.shp')
         zones = zones.loc[zones['deso'].isin(df_sim['deso'].unique()), :]
         gdf = gpd.sjoin(gdf, zones.loc[:, ['deso', 'befolkning', 'geometry']])
         self.df_inf_gt = gdf.groupby('deso')['n'].sum().reset_index()
@@ -172,8 +172,8 @@ class EVSimStatsAggregation:
         df.columns = ['deso', 'Charging_type', 'power_fast', 'sim', 'gt']
 
         # Sale up to total VG residents
-        df.sim = df.sim * (1 / 0.3)  # The results are based on 30% VG car users.
-        df.to_csv(f'results/sensitivity/{self.scenario}_inf_comp.csv', index=False)
+        df.sim = df.sim * (1 / 0.35)  # The results are based on 35% VG car users
+        df.to_csv(ROOT_dir + f'/results/sensitivity/{self.scenario}_inf_comp.csv', index=False)
 
 
 if __name__ == '__main__':

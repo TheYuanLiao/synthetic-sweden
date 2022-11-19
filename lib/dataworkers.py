@@ -147,8 +147,8 @@ def personplan2df(person, plan, output=True, experienced=False):
 
 def plans_summary(df):
     """
-    :param df: A dataframe of multiple agents' plans
-    :return: A dataframe of multiple agents' plans with more columns of variables
+    :param df: dataframe, containing multiple agents' plans
+    :return: dataframe, containing multiple agents' plans with more information
     """
     # calculate travel time
     df.loc[:, 'trav_time_min'] = df.trav_time.apply(lambda x: pd.Timedelta("0 days " + x))
@@ -185,80 +185,10 @@ def plans_summary(df):
     return df
 
 
-def temporal_profiler(df_trips, type='activity'):
-    """
-    :param df_trips: a dataframe of agents' activity plans
-    :param type: activity or driving (enroute)
-    :type type: str
-    :return: a dataframe of temporal profile at the second level
-    """
-    if type == 'activity':
-        tempo = {}
-        tempo['input'] = {}
-        tempo['output'] = {}
-        for act_purpose in ['home', 'work', 'school', 'other']:
-            tempo['input'][act_purpose] = np.zeros((1440, 1))
-            tempo['output'][act_purpose] = np.zeros((1440, 1))
-        for _, row in df_trips.iterrows():
-            if row['act_time'] > 0:
-                if row['act_end'] * 60 > row['act_time']:
-                    _start = int(np.floor(row['act_end'] * 60 - row['act_time']))
-                    _end = int(np.floor(row['act_end'] * 60))
-                    tempo[row['src']][row['act_purpose']][_start:_end, 0] += 1
-                else:
-                    _start = int(np.floor(23.99 * 60 - (row['act_time'] - row['act_end'] * 60)))
-                    _mid = int(np.floor(23.99 * 60))
-                    _end = int(np.floor(row['act_end'] * 60))
-                    tempo[row['src']][row['act_purpose']][_start:_mid, 0] += 1
-                    tempo[row['src']][row['act_purpose']][0:_end, 0] += 1
-        df_tempo1 = pd.DataFrame()
-        df_tempo2 = pd.DataFrame()
-        for act_purpose in ['home', 'work', 'school', 'other']:
-            df_tempo1.loc[:, act_purpose] = tempo['input'][act_purpose][:, 0]
-            df_tempo2.loc[:, act_purpose] = tempo['output'][act_purpose][:, 0]
-        df_tempo1.loc[:, 'src'] = 'input'
-        df_tempo1.loc[:, 'time'] = range(0, 1440)
-        df_tempo2.loc[:, 'src'] = 'output'
-        df_tempo2.loc[:, 'time'] = range(0, 1440)
-        df_tempo = pd.concat([df_tempo1, df_tempo2])
-    if type == 'driving':
-        tempo = {}
-        tempo['input'] = {}
-        tempo['output'] = {}
-        for act_purpose in ['home', 'work', 'school', 'other']:
-            tempo['input'][act_purpose] = np.zeros((1440, 1))
-            tempo['output'][act_purpose] = np.zeros((1440, 1))
-        for _, row in df_trips.iterrows():
-            if row['trav_time_min'] > 0:
-                _start = int(np.floor(row['dep_time'] * 60))
-                _end = int(np.floor(row['dep_time'] * 60 + row['trav_time_min']))
-                if _end < 1440:
-                    tempo[row['src']][row['act_purpose']][_start:_end, 0] += 1
-                else:
-                    _mid = int(np.floor(23.99 * 60))
-                    tempo[row['src']][row['act_purpose']][_start:_mid, 0] += 1
-                    tempo[row['src']][row['act_purpose']][0:_end - 1440, 0] += 1
-        df_tempo1 = pd.DataFrame()
-        df_tempo2 = pd.DataFrame()
-        for act_purpose in ['home', 'work', 'school', 'other']:
-            df_tempo1.loc[:, act_purpose] = tempo['input'][act_purpose][:, 0]
-            df_tempo2.loc[:, act_purpose] = tempo['output'][act_purpose][:, 0]
-        df_tempo1.loc[:, 'src'] = 'input'
-        df_tempo1.loc[:, 'time'] = range(0, 1440)
-        df_tempo2.loc[:, 'src'] = 'output'
-        df_tempo2.loc[:, 'time'] = range(0, 1440)
-        df_tempo = pd.concat([df_tempo1, df_tempo2])
-
-        # Convert to %
-        for act_purpose in ['home', 'work', 'school', 'other']:
-            df_tempo.loc[:, act_purpose] /= (df_trips['PId'].nunique() / 100)
-    return df_tempo
-
-
 def trips2stats(df_trips):
     """
-    :param df_trips: a dataframe of agents' activity plans
-    :return: a dataframe of agents' activity plans statistics e.g., distance, utility score.
+    :param df_trips: dataframe, containing agents' activity plans
+    :return: dataframe, describing agents' activity plans with indicators e.g., distance, utility score.
     """
     # Plan sequence
     def plan2stats(data):
@@ -284,11 +214,8 @@ def trips2stats(df_trips):
 def shp2poly(filename=None, targetfile=None):
     """
     Convert a given shapefile to a .poly file for the use by osmosis.
-    :param filename: file path of the shape file
-    :type filename: str
-    :param targetfile: target .poly file
-    :type targetfile: str
-    :return: None
+    :param filename: str, file path of the shape file
+    :param targetfile: str, target .poly file
     """
     gdf_city_boundary = gpd.GeoDataFrame.from_file(filename).to_crs(4326)
     g = [i for i in gdf_city_boundary.geometry]
@@ -306,8 +233,7 @@ def shp2poly(filename=None, targetfile=None):
 def load_eff_lookup_table(lookup_table=None):
     """
     Create a look-up table of BEV energy efficiency given speed and slope.
-    :param lookup_table: file name of the look-up table
-    :type lookup_table: str
+    :param lookup_table: str, file name of the look-up table
     :return: a interpolated look-up table
     """
     filepath = f'dbs/ev/IDEAS_EnergyConsumptionModels/CSV/{lookup_table}'
@@ -321,10 +247,8 @@ def load_eff_lookup_table(lookup_table=None):
 def load_charging_table(battery_size=None):
     """
     Create a look-up table dictionary for charging time.
-    :param battery_size: battery size
-    :type battery_size: int
-    :return: a lookup table of power, soc, charging time
-    :rtype: dictionary
+    :param battery_size: int, battery size
+    :return: dict, a lookup table of power, soc, charging time
     """
     filepath = f'dbs/ev/charging_dynamics.csv'
     ev_charge = pd.read_csv(filepath)
@@ -339,39 +263,12 @@ def load_charging_table(battery_size=None):
     return sp_dict
 
 
-def eventsdb2batches(scenario=None, batch_num=20):
-    user = keys_manager['database']['user']
-    password = keys_manager['database']['password']
-    port = keys_manager['database']['port']
-    db_name = keys_manager['database']['name']
-    engine = sqlalchemy.create_engine(f'postgresql://{user}:{password}@localhost:{port}/{db_name}')
-    # Connect to PostgreSQL server
-    dbConnection = engine.connect()
-    # Read data from PostgreSQL database table and load into a DataFrame instance
-    df_event = pd.read_sql(f'''select * from {scenario} order by person, time, type DESC;''', dbConnection)
-
-    print('Creating batches of events...')
-    agents_car = df_event.loc[:, 'person'].unique()
-    num_agents = len(agents_car)
-    batch_num = batch_num
-    batch_size = num_agents // batch_num
-    if num_agents % batch_num == 0:
-        batch_seq = list(range(0, batch_num)) * batch_size
-    else:
-        batch_seq = list(range(0, batch_num)) * batch_size + list(range(0, num_agents % batch_num))
-    random.Random(4).shuffle(batch_seq)
-    agents_car_batch_dict = {person: bt for person, bt in zip(agents_car, batch_seq)}
-    df_event.loc[:, 'batch'] = df_event.loc[:, 'person'].map(agents_car_batch_dict)
-    print(f'Number of car agents: {num_agents}.')
-
-    batch_id = 0
-    for _, data in tqdm(df_event.groupby('batch'), desc='Saving batches'):
-        data.to_csv(ROOT_dir + f'/dbs/output_summary/{scenario}/ev_sim/events_batch{batch_id}.csv.gz',
-                    index=False, compression="gzip")
-        batch_id += 1
-
-
 def matsim_events2database(scenario=None, test=False):
+    """
+    Write MATSim output events to the database.
+    :param scenario: str, scenario name
+    :param test: boolean, whether to do a test
+    """
     user = keys_manager['database']['user']
     password = keys_manager['database']['password']
     port = keys_manager['database']['port']
@@ -407,76 +304,38 @@ def matsim_events2database(scenario=None, test=False):
         df2write.to_sql(scenario, engine, index=False, if_exists='append', method='multi', chunksize=10000)
 
 
-class AgentsGenerator:
-    def __init__(self):
-        self.plans = None
-        self.excluded = None
-        self.writer = None
-        self.filename = None
+def eventsdb2batches(scenario=None, batch_num=20):
+    """
+    Divide the database-stored events into batches for the BEV simulation.
+    :param scenario: str, scenario name
+    :param batch_num: int, number of batches
+    """
+    user = keys_manager['database']['user']
+    password = keys_manager['database']['password']
+    port = keys_manager['database']['port']
+    db_name = keys_manager['database']['name']
+    engine = sqlalchemy.create_engine(f'postgresql://{user}:{password}@localhost:{port}/{db_name}')
+    # Connect to PostgreSQL server
+    dbConnection = engine.connect()
+    # Read data from PostgreSQL database table and load into a DataFrame instance
+    df_event = pd.read_sql(f'''select * from {scenario} order by person, time, type DESC;''', dbConnection)
 
-    def load_population(self):
-        self.plans = pd.read_pickle(ROOT_dir + '/dbs/agents/df_act_plan_vgr.pkl')
-        self.plans['act_purpose'] = self.plans['act_purpose'].map(activity_purpose_dict)
+    print('Creating batches of events...')
+    agents_car = df_event.loc[:, 'person'].unique()
+    num_agents = len(agents_car)
+    batch_num = batch_num
+    batch_size = num_agents // batch_num
+    if num_agents % batch_num == 0:
+        batch_seq = list(range(0, batch_num)) * batch_size
+    else:
+        batch_seq = list(range(0, batch_num)) * batch_size + list(range(0, num_agents % batch_num))
+    random.Random(4).shuffle(batch_seq)
+    agents_car_batch_dict = {person: bt for person, bt in zip(agents_car, batch_seq)}
+    df_event.loc[:, 'batch'] = df_event.loc[:, 'person'].map(agents_car_batch_dict)
+    print(f'Number of car agents: {num_agents}.')
 
-    def define_excluded(self):
-        scenario = 'scenario_vgr_v1'
-        file_path2output = ROOT_dir + f'/dbs/output_summary/{scenario}/'
-        df = pd.read_csv(file_path2output + "trips.csv")
-        self.excluded = df.loc[df['act_time'] <= 0, 'PId'].unique()
-
-    def filter_population(self, number=85500):
-        df_od = pd.read_csv((ROOT_dir + '/dbs/agents_sanity_check.csv'))
-        agents_id = df_od['PId'].unique()
-        np.random.seed(4)
-        arr = np.arange(len(agents_id))
-        np.random.shuffle(arr)
-        # 17100 x 5 = 5% of VGR population
-        agents_id_sim = agents_id[arr[:number]]
-        self.plans = self.plans.loc[self.plans['PId'].isin(agents_id_sim), :]
-        self.plans = self.plans.loc[~self.plans['PId'].isin(self.excluded), :]
-        print("Share of VGR population: %.2f" % (self.plans['PId'].nunique() / 1710000 * 100))
-        self.filename = "plans%.2f.xml.gz" % (self.plans['PId'].nunique() / 1710000)
-
-    def writing_plans(self):
-        def data2xml(data):
-            num_activities = len(data)
-            # Modes between activities
-            mode_array = data['mode'].values[1:]
-            act_purpose_array = data['act_purpose'].values
-            X_array = data['POINT_X_sweref99'].values
-            Y_array = data['POINT_Y_sweref99'].values
-            act_end_array = data['act_end'].values
-            # Process the case where the last activity crosses 0
-            if act_end_array[-2] < 3:
-                act_purpose_array = np.concatenate((act_purpose_array[-2], act_purpose_array[:-1]), axis=None)
-                X_array = np.concatenate((X_array[-2], X_array[:-1]), axis=None)
-                Y_array = np.concatenate((Y_array[-2], Y_array[:-1]), axis=None)
-                act_end_array = np.concatenate((act_end_array[-2], act_end_array[:-1]), axis=None)
-                act_end_array[-1] = 23.99
-            # Excluding those who 1) do not move (stay home),
-            # 2) start and end locations are not the same
-            if (num_activities > 2) & (act_purpose_array[0] == act_purpose_array[-1]):
-                writer.start_person(person_id=data['PId'].values[0])
-                writer.start_plan(selected=True)
-                for i in range(num_activities):
-                    # The last activity is always home
-                    if i == num_activities - 1:
-                        writer.add_activity(type=purpose_dict[act_purpose_array[i]],
-                                            x=X_array[i],
-                                            y=Y_array[i])
-                    else:
-                        writer.add_activity(type=purpose_dict[act_purpose_array[i]],
-                                            x=X_array[i],
-                                            y=Y_array[i],
-                                            end_time=act_end_array[i] * 3600)
-                        writer.add_leg(mode=mode_dict[mode_array[i]])
-                writer.end_plan()
-                writer.end_person()
-
-        with gzip.open(ROOT_dir + "/dbs/agents/" + self.filename, 'wb+') as f_write:
-            writer = matsim.writers.PopulationWriter(f_write)
-            writer.start_population()
-            self.plans.groupby('PId').apply(data2xml)
-            writer.end_population()
-
-
+    batch_id = 0
+    for _, data in tqdm(df_event.groupby('batch'), desc='Saving batches'):
+        data.to_csv(ROOT_dir + f'/dbs/output_summary/{scenario}/ev_sim/events_batch{batch_id}.csv.gz',
+                    index=False, compression="gzip")
+        batch_id += 1

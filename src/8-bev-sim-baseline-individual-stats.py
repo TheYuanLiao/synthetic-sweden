@@ -43,25 +43,6 @@ class EVSimStats:
         file = ROOT_dir + f'/dbs/output_summary/{self.scenario}/valid_agents.csv'
         self.df_valid_agents = pd.read_csv(file)
 
-    def batch_stats(self, batch_agents=None, paraset=None):
-        user = dw.keys_manager['database']['user']
-        password = dw.keys_manager['database']['password']
-        port = dw.keys_manager['database']['port']
-        db_name = dw.keys_manager['database']['name']
-        engine = sqlalchemy.create_engine(f'postgresql://{user}:{password}@localhost:{port}/{db_name}')
-        df_examples = pd.read_sql(f'''SELECT * FROM scenario_vg_car_ev_sim_paraset{paraset} WHERE person IN ({batch_agents});''',
-                                  con=engine)
-        df_stats = df_examples.groupby('person').progress_apply(lambda data: ev.ev_sim_stats(data,
-                                                                                    paraset=paraset,
-                                                                                    df_para=self.df_para)).reset_index()
-        df_stats.to_sql(name=self.scenario + '_individual',
-                        schema='sim_statistics',
-                        con=engine,
-                        index=False,
-                        if_exists='append',
-                        method='multi', chunksize=10000)
-        return df_examples
-
     def stats(self, paraset=None):
         user = dw.keys_manager['database']['user']
         password = dw.keys_manager['database']['password']
