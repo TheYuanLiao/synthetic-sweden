@@ -6,5 +6,7 @@ legacy
 results
 pt2matsim
 figures/records
+figures/trb_poster
+src/visualisation/trb_poster
 *.pyc
 .ipynb_checkpoints
