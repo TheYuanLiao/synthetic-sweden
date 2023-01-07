@@ -45,7 +45,7 @@ plot.wo <- function(tp, ev.sim1, tlt, y1, y2){
   geom_line(aes(y=soc, size=factor(charging_type, levels=c(t[1], t[2])),
                 color=factor(charging_type, levels=c(t[1], t[2]))), show.legend = F, alpha=1) +
   scale_color_manual(name='Charging type', values=socColor) +
-  scale_size_manual(name='Charging type', values = c(2, 0.5)) + #c('0'=3, '1'=2, '2'=1, '3'=0.5)
+  scale_size_manual(name='Charging type', values = c(2, 1)) + #c('0'=3, '1'=2, '2'=1, '3'=0.5)
   geom_line(aes(y=distance_driven / coeff1), size=0.5, show.legend = F, color=distanceColor) +
   xlim(c(0, 23)) +
   scale_y_continuous(
