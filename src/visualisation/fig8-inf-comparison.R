@@ -30,7 +30,7 @@ charging <- charging %>%
   mutate(mycolor = ifelse(diff>0, "type1", "type2"))
 charging$Charging_type <- plyr::mapvalues(charging$Charging_type,
                                         from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
-                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 zones <- zones[zones$deso %in% unique(charging$deso),]
 muni <- st_read(paste0("dbs/municipalities/sweden_komk.shp"))
 muni.vg <- st_crop(muni, zones)

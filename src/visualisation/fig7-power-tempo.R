@@ -29,7 +29,7 @@ power.50 <- power.50 %>%
   filter(Charging_type %in% c('1 (0.2)', '2 (0.2)', '3 (0.9)'))
 power.50$Charging_type <- plyr::mapvalues(power.50$Charging_type,
                                      from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
-                                     to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+                                     to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 
 cols <- c('#242676', '#037540', 'purple')
 g <- ggplot(data=power.50,

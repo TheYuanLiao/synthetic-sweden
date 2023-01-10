@@ -25,7 +25,7 @@ df$Resi_charger <- mapvalues(df$residential_charger,
           to=c("Without overnight charger","With overnight charger"))
 df$Charging_type <- mapvalues(df$charging_type,
           from=c(1, 2, 3),
-          to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+          to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 g1 <- ggplot(data=df) +
   geom_histogram(aes(y=soc_init), fill='purple', color=NA, alpha=0.3, bins=100) +
   facet_grid(.~Charging_type) +

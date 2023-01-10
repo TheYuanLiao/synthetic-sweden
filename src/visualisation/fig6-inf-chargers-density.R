@@ -31,7 +31,7 @@ tst <- charging %>%
   filter(Charging_type %in% c('1 (0.2)', '2 (0.2)', '3 (0.9)'))
 tst$Charging_type <- plyr::mapvalues(tst$Charging_type,
                                         from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
-                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 tst <- right_join(x = zones[, c('deso', 'Area')]%>% st_set_geometry(NULL),
                                              y = tst,
                                    by = "deso", all.y = TRUE)
@@ -45,7 +45,7 @@ tst.all <- charging %>%
   filter(Charging_type %in% c('1 (0.2)', '2 (0.2)', '3 (0.9)'))
 tst.all$Charging_type <- plyr::mapvalues(tst.all$Charging_type,
                                         from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
-                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 tst.all <- right_join(x = zones[, c('deso', 'Area')]%>% st_set_geometry(NULL),
                                              y = tst.all,
                                    by = "deso", all.y = TRUE)

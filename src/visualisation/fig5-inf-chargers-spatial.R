@@ -35,7 +35,7 @@ charging.agg <- charging %>%
   filter(Charging_type %in% c('1 (0.2)', '2 (0.2)', '3 (0.9)'))
 charging.agg$Charging_type <- plyr::mapvalues(charging.agg$Charging_type,
                                         from=c('1 (0.2)', '2 (0.2)', '3 (0.9)'),
-                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-actuated"))
+                                        to=c("1 Liquid-fuel","2 Plan-ahead","3 Event-triggered"))
 
 charging.agg.work <- right_join(x = zones[,c('deso', 'geometry')],
                                  y = charging.agg[charging.agg$Purpose == 'Work', ],
